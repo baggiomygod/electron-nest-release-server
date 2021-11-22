@@ -1,0 +1,47 @@
+version: "3"
+
+services:
+  web:
+    image: nginx:latest
+    container_name: web-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./web-app/build:/var/www/html
+      - ./ngnix/config/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - api-service
+
+  database-service:
+    image: postgres:10
+    container_name: app-database
+    environment:
+      - POSTGRES_DB=adonis_db
+      - POSTGRES_DB_TEST=adonis_db_teste
+      - POSTGRES_USER=adonis_usr
+      - POSTGRES_PASSWORD=123456
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    volumes:
+      - ./database/docker-data/postgres:/var/lib/postgresql/data
+      # - ./database/schema.sql:/docker-entrypoint-initdb.d/0.schema.sql
+      #- ./database/initial-data.sql:/docker-entrypoint-initdb.d/1.data.sql
+
+  api-service:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    working_dir: /api
+    container_name: app-api
+    volumes:
+      - ./api:/api
+    command: sh -c "npx pm2 start ecosystem.config.js --no-daemon"
+    ports:
+      - '8000:8000'
+    expose:
+      - '5432'
+    env_file: ./api/.env
+    depends_on:
+      - database-service
